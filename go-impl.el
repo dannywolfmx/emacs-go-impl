@@ -147,15 +147,22 @@
 (defun go-impl (receiver interface)
   (interactive
    (let* ((packages (go-packages))
-          (comp-fn (lambda (input predicate code)
-                     (when (bound-and-true-p helm-mode)
-                       (setq input (or (bound-and-true-p helm-input) input)))
-                     (go-impl--completing-function packages input predicate code))))
+          (comp-fn (if (bound-and-true-p ivy-mode)
+                       (lambda (input)
+                         (go-impl--completing-function packages input nil t))
+                     (lambda (input predicate code)
+                       (when (bound-and-true-p helm-mode)
+                         (setq input (or (bound-and-true-p helm-input) input)))
+                       (go-impl--completing-function packages input predicate code)))))
      (setq go-impl--receiver-cache nil)
      (list
       (read-from-minibuffer "Receiver: " nil go-impl--local-command-map nil
                             'go-impl--receiver-history nil t)
-      (completing-read "Interface: " comp-fn nil nil nil 'go-impl--interface-history))))
+      (if (bound-and-true-p ivy-mode)
+          (ivy-read "Interface: " comp-fn
+                    :history 'go-impl--interface-history
+                    :dynamic-collection t)
+        (completing-read "Interface: " comp-fn nil nil nil 'go-impl--interface-history)))))
   (when go-impl-aliases-alist
     (setq interface (or (assoc-default interface go-impl-aliases-alist)
                         interface)))
